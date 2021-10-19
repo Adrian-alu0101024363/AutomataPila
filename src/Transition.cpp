@@ -79,6 +79,8 @@
   Transition& Transition::operator=(const Transition& b) {
     this->simbol_ = b.getsimb();
     this->nextnode_ = b.getdestination();
+    this->extract_ = b.getExtract();
+    this->insert_ = b.getInsert();
     return *this;  
   }
 

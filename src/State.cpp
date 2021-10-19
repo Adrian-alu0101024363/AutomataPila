@@ -13,7 +13,7 @@
     *this = cp;
   }
   //Constructor with paramethers
-  State::State(bool acept, int numtrans, string node, set<Transition> trans):
+  State::State(bool acept, int numtrans, string node, vector<Transition> trans):
     acept_(acept),
     numtrans_(numtrans),
     node_(node),
@@ -25,7 +25,7 @@
 
   //Set a transition for the state
   void State::settrans(Transition const& element) {
-    trans_.insert(element);
+    trans_.push_back(element);
   }
   //Get if the state is a acept state or not
   bool State::getacept(void) const {
@@ -40,7 +40,7 @@
     return node_;
   }
   //Get the set of transition aka all the transition of the state
-  set<Transition> State::gettrans() const {
+  vector<Transition> State::gettrans() const {
     return trans_;
   }
   //Set a state as an acept state or not
@@ -57,13 +57,13 @@
   }
 
   //Iterator to the begining of the transition set
-  set<Transition>::iterator State::begini(void) {
+  vector<Transition>::iterator State::begini(void) {
     
     return trans_.begin();
     
   }
   //Iterator to the end of the transition set
-  set<Transition>::iterator State::endi(void) {
+  vector<Transition>::iterator State::endi(void) {
     
     return trans_.end();
     

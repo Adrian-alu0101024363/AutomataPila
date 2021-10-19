@@ -66,17 +66,15 @@ void nfa::read(string inputfile) {
       aux3.setExtract(extractaux);
       vector<string> insertaux;
       for (int i = 4; i < strings.size(); i++) {
-      cout << strings[i] << "\t";
       insertaux.push_back(strings[i]);
       }
       aux3.setInsert(insertaux);
-      cout << "\n";
       set<State>::iterator it = States_.begin();
       while (it != States_.end()) {
         State temp(*it);
         if (temp.getnode() == comparenode.getnode()) {
-          set<Transition> walk = temp.gettrans();
-          for (set<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
+          vector<Transition> walk = temp.gettrans();
+          for (vector<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
             Transition tranaux(*t);
             comparenode.settrans(tranaux);
           }
@@ -164,21 +162,21 @@ void nfa::show() {
     for (set<State>::iterator i = States_.begin(); i != States_.end(); i++) {
       State aux(*i);
       string temp = aux.getnode();
-      set<Transition> walk = aux.gettrans();
+      vector<Transition> walk = aux.gettrans();
       bool acept = aux.getacept();
       cout << temp << "  Es aceptado?: " << acept << endl;
       cout << "Transiciones " ;
-      for (set<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
+      for (vector<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
         Transition tran(*t);
         string tra = tran.getsimb();
         string suginode = tran.getdestination();
         string extra = tran.getExtract();
-        cout << "con simbolo: " << tra << "hacia -> " << suginode;
+        cout << "con simbolo: " << tra << " hacia -> " << suginode;
         cout << " extrae: "<< extra << " inserta: ";
         for (int i = 0; i < tran.getInsert().size(); i++) {
           cout << tran.getInsert()[i] << "\t";
         }
-        cout << " , ";
+        cout << endl;
       }
       cout << endl;
     }
