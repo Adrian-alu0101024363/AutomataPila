@@ -37,6 +37,7 @@ void nfa::read(string inputfile) {
     }
     getline(file, line);
     initialState_ = line;
+    actualState_ = line;
     getline(file, line);
     stackinitial_ = line;
     stack_.push(stackinitial_);
@@ -143,6 +144,138 @@ vector<string> nfa::splitString(string str, string delimiter) {
     }
     strings.push_back(str.substr(start, end - start));
     return strings;
+}
+
+vector<Transition> nfa::getMoves(State actual, string symbol, stack<string> extract) {
+  vector<Transition> transition = actual.gettrans();
+  vector<Transition> allowed;
+  string actual_symbol;
+  string top;
+  string actual_top = extract.top();
+  for (int i = 0; i < transition.size(); i++) {
+    actual_symbol = transition[i].getsimb();
+    top = transition[i].getExtract();
+    //cout << actual_symbol[0] << "\t" << symbol[0];
+    if (actual_symbol == symbol || actual_symbol == ".") {
+      if (actual_top == top) {
+        Transition tran = transition[i];
+        allowed.push_back(tran);
+      }
+    }
+  }
+  return allowed;
+}
+void nfa::execute(string chain) {
+  State initial;
+  input_ = chain;
+  end_ = chain.length();
+  acceptedInput_ = false;
+  string input;
+  input.push_back(chain[0]);
+  for (auto i : States_) {
+    if (i.getnode() == initialState_) {
+      initial = i;
+    }
+  }
+  executeStep(initial, input, chain, stack_, 1);
+  cout << endl << "Chain is: " << acceptedInput_;
+}
+void nfa::executeStep(State actualState, string input, string real, stack<string> stepStack, int move) {
+  if (!acceptedInput_) {
+    if (real.empty()) {
+      if (actualState.getacept()) {
+        cout << "Acepto";
+        acceptedInput_ = true;
+      }
+    }
+    cout << "Move: " << move << endl;
+    string kuso;
+    if (real.empty()) {
+      kuso = ".";
+    } else {
+      kuso.push_back(real[0]);
+    }
+    cout << "Estado actual " << actualState.getnode() << endl;
+    cout << "Input " << kuso << "real " << real << endl;
+    vector<Transition> allowedTrans = getMoves(actualState, kuso, stepStack);
+    cout << "Size: " << allowedTrans.size() << endl;
+    if (allowedTrans.size() > 0) {
+    for (int i = 0; i < allowedTrans.size(); i++) {
+      string input_string = "";
+      stack<string> tempstack = stepStack;
+      string tempinput = real;
+      State tempstate = actualState;
+      string dot = ".";
+      //cout << allowedTrans[i].getsimb();
+      if (allowedTrans[i].getsimb() != dot) {
+        //int pos = real.find_first_of(allowedTrans[i].getsimb());
+        if (!tempinput.empty()) {
+          tempinput.erase(0, 1);
+        }
+        input_string.push_back(real[0]);
+        move++;
+      } else {
+        input_string = ".";
+      }
+      //cout << "Move: " << move << endl;
+      //cout << "Temp " << input_string << "real " << tempinput << endl;
+      string nextstate_string = allowedTrans[i].getdestination();
+      cout << "Siguiente:  " << nextstate_string << endl;
+      State nextstate;
+      for (auto i : States_) {
+        if (i.getnode() == nextstate_string) {
+          nextstate = i;
+        }
+      }
+      tempstack.pop();
+      vector<string> nextsymbols = allowedTrans[i].getInsert();
+      for (int i = nextsymbols.size() - 1; i >= 0; i--) {
+        if (nextsymbols[i] != ".") {
+          tempstack.push(nextsymbols[i]);
+        }
+      }
+      stack<string> checking = tempstack;
+      cout << "En pila: ";
+      while (!checking.empty()) {
+        cout << checking.top() << "\t";
+        checking.pop();
+      }
+      cout << endl;
+      //cout << "aceptado?: " << nextstate.getacept() << endl;
+      //acceptedInput_ = nextstate.getacept();
+      executeStep(nextstate, input_string, tempinput, tempstack, move);
+    }
+    } else {
+      cout << "kuso mitai" << endl;
+    }
+  } else {
+    cout << "llego final";
+  }
+}
+bool nfa::checkEnd(string input, int move) {
+  return move > end_ ? 1 : 0;
+  /*char compare = input[move];
+  if (input_.back() == compare) {
+    return true;
+  } else {
+    return false;
+  }*/
+}
+void nfa::test() {
+  //set<State>::iterator i = States_.begin();
+  for (auto iter : States_) {
+    State aux(iter);
+    string temp = aux.getnode();
+    stack<string> stackaux;
+    stackaux.push("S");
+    vector<Transition> tran = getMoves(aux, "0", stackaux);
+    if (!tran.empty()) {
+      for (int i = 0; i < tran.size(); i++) {
+        cout << tran[i].getdestination();
+      }
+    }
+  }
+
 }
 void nfa::show() {
     cout << "Size alfabeto: " << alfabetsize_ << endl;

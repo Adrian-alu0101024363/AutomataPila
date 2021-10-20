@@ -21,11 +21,20 @@ class nfa {
     string stackinitial_;
     set<string> stack_symbols_;
     stack<string> stack_;  
+    string actualState_;
+    bool acceptedInput_;
+    string input_;
+    int end_;
   public:
     void read(string inputfile);
     void show();
+    vector<Transition> getMoves(State actual, string symbol, stack<string> extract);
+    void test();
+    void execute(string chain);
+    void executeStep(State actualState, string input, string real, stack<string> stepStack, int move);
   private:
     void uncomment(string inputfile, string outfile);
     void clean(string inputfile, string outfile);
+    bool checkEnd(string input, int move);
     vector<string> splitString(string str, string delimiter = " ");
 };

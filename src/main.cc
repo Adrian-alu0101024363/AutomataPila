@@ -14,5 +14,10 @@ int main(int argc, char** argv) {
     nfa automata;
     automata.read(input);
     automata.show();
+    string simbolo;
+    //automata.test();
+    cout << "Escribe: ";
+    cin >> simbolo;
+    automata.execute(simbolo);
   }
 }
