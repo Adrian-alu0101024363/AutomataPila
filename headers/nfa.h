@@ -5,6 +5,7 @@
 #include <sstream>
 #include <algorithm>
 #include <stack>
+#include <assert.h>
 #include "../headers/State.hpp"
 
 using namespace std;
@@ -25,16 +26,26 @@ class nfa {
     bool acceptedInput_;
     string input_;
     int end_;
+    bool trace_;
   public:
     void read(string inputfile);
     void show();
     vector<Transition> getMoves(State actual, string symbol, stack<string> extract);
-    void test();
     void execute(string chain);
+    void executeFile(string filename);
     void executeStep(State actualState, string input, string real, stack<string> stepStack, int move);
+    void setTrace(bool trace) {trace_ = trace;}
   private:
     void uncomment(string inputfile, string outfile);
     void clean(string inputfile, string outfile);
     bool checkEnd(string input, int move);
     vector<string> splitString(string str, string delimiter = " ");
+    void ParseStates(string line);
+    bool ValidState(State check);
+    void ParseAlfabeth(string line);
+    void ParseStack(string line);
+    bool ValidStack(string check);
+    void ParseAccept(string line);
+    void ParseTrans(string line, ifstream& file);
+    void Trace(State actualState, string input, string real, stack<string> stepStack, int move);
 };

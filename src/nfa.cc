@@ -7,91 +7,29 @@ void nfa::read(string inputfile) {
   string cleaned = "Clean";
   uncomment(inputfile, uncommented);
   clean(uncommented, cleaned);
-  string nodeaux,destinationnode,originnode;
-  string simbolaux, extractaux;     
-  bool aceptaux;
   ifstream file;
   file.open(cleaned);
   string line;
   if (file) {
     getline(file, line, '\n');
-    vector<string> strings;
-    strings = splitString(line);
-    NumberNodes_ = strings.size();
-    for (int i = 0; i < strings.size(); i++) {
-      State aux;
-      nodeaux = strings[i];
-      aux.setnode(nodeaux);
-      States_.insert(aux);
-    }
+    ParseStates(line);
     getline(file, line);
-    strings = splitString(line);
-    alfabetsize_ = strings.size();
-    for (int i = 0; i < strings.size(); i++) {
-      Alfabet_.insert(strings[i]);
-    }
+    ParseAlfabeth(line);
     getline(file, line);
-    strings = splitString(line);
-    for (int i = 0; i < strings.size(); i++) {
-      stack_symbols_.insert(strings[i]);
-    }
+    ParseStack(line);
     getline(file, line);
+    State initial;
+    initial.setnode(line);
+    assert(ValidState(initial));
     initialState_ = line;
     actualState_ = line;
     getline(file, line);
+    assert(ValidStack(line));
     stackinitial_ = line;
     stack_.push(stackinitial_);
     getline(file, line);
-    strings = splitString(line);
-    NumberAcept_ = strings.size();
-    for (int i = 0; i < strings.size(); i++) {
-      nodeaux = strings[i];
-      State aux2;
-      aux2.setnode(nodeaux);
-      auto pos = States_.find(aux2);
-      States_.erase(pos);
-      aux2.setacept(1);
-      States_.insert(aux2);
-    }
-    while (getline(file, line)) {
-      strings = splitString(line);
-      originnode = strings[0];
-      simbolaux = strings[1];
-      extractaux = strings[2];
-      destinationnode = strings[3];
-      Transition aux3;
-      State comparenode;
-      comparenode.setnode(originnode);
-      aux3.setsimb(simbolaux);
-      aux3.setdestination(destinationnode);
-      aux3.setExtract(extractaux);
-      vector<string> insertaux;
-      for (int i = 4; i < strings.size(); i++) {
-      insertaux.push_back(strings[i]);
-      }
-      aux3.setInsert(insertaux);
-      set<State>::iterator it = States_.begin();
-      while (it != States_.end()) {
-        State temp(*it);
-        if (temp.getnode() == comparenode.getnode()) {
-          vector<Transition> walk = temp.gettrans();
-          for (vector<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
-            Transition tranaux(*t);
-            comparenode.settrans(tranaux);
-          }
-          if (temp.getacept()) {
-            comparenode.setacept(1);
-            comparenode.settrans(aux3);
-          } else {
-            comparenode.settrans(aux3);
-          }
-        }
-        it++;
-      }
-      auto position = States_.find(comparenode);
-      States_.erase(position);
-      States_.insert(comparenode);
-    }
+    ParseAccept(line);
+    ParseTrans(line, file);
   }
   file.close();
 }
@@ -121,6 +59,7 @@ void nfa::uncomment(string inputfile, string outfile) {
   output.close();
   file.close();
 }
+
 void nfa::clean(string inputfile, string outfile) {
   ifstream file;
   file.open(inputfile);
@@ -133,6 +72,7 @@ void nfa::clean(string inputfile, string outfile) {
     }
   }
 }
+
 vector<string> nfa::splitString(string str, string delimiter) {
     int start = 0;
     int end = str.find(delimiter);
@@ -155,7 +95,6 @@ vector<Transition> nfa::getMoves(State actual, string symbol, stack<string> extr
   for (int i = 0; i < transition.size(); i++) {
     actual_symbol = transition[i].getsimb();
     top = transition[i].getExtract();
-    //cout << actual_symbol[0] << "\t" << symbol[0];
     if (actual_symbol == symbol || actual_symbol == ".") {
       if (actual_top == top) {
         Transition tran = transition[i];
@@ -165,6 +104,16 @@ vector<Transition> nfa::getMoves(State actual, string symbol, stack<string> extr
   }
   return allowed;
 }
+
+void nfa::executeFile(string filename) {
+  ifstream file;
+  file.open(filename,ios::in);
+  string line;
+  while (getline(file,line)) {
+    execute(line);
+  }
+}
+
 void nfa::execute(string chain) {
   State initial;
   input_ = chain;
@@ -178,27 +127,30 @@ void nfa::execute(string chain) {
     }
   }
   executeStep(initial, input, chain, stack_, 1);
-  cout << endl << "Chain is: " << acceptedInput_;
+  if (acceptedInput_) {
+    cout << endl << "Chain is accepted!" << endl;
+  } else {
+    cout << endl << "Chain not valid" << endl;
+  }
 }
+
 void nfa::executeStep(State actualState, string input, string real, stack<string> stepStack, int move) {
   if (!acceptedInput_) {
     if (real.empty()) {
       if (actualState.getacept()) {
-        cout << "Acepto";
         acceptedInput_ = true;
       }
     }
-    cout << "Move: " << move << endl;
-    string kuso;
+    string actual_input;
     if (real.empty()) {
-      kuso = ".";
+      actual_input = ".";
     } else {
-      kuso.push_back(real[0]);
+      actual_input.push_back(real[0]);
     }
-    cout << "Estado actual " << actualState.getnode() << endl;
-    cout << "Input " << kuso << "real " << real << endl;
-    vector<Transition> allowedTrans = getMoves(actualState, kuso, stepStack);
-    cout << "Size: " << allowedTrans.size() << endl;
+    if (trace_) {
+      Trace(actualState, actual_input, real, stepStack, move);
+    }
+    vector<Transition> allowedTrans = getMoves(actualState, actual_input, stepStack);
     if (allowedTrans.size() > 0) {
     for (int i = 0; i < allowedTrans.size(); i++) {
       string input_string = "";
@@ -206,9 +158,7 @@ void nfa::executeStep(State actualState, string input, string real, stack<string
       string tempinput = real;
       State tempstate = actualState;
       string dot = ".";
-      //cout << allowedTrans[i].getsimb();
       if (allowedTrans[i].getsimb() != dot) {
-        //int pos = real.find_first_of(allowedTrans[i].getsimb());
         if (!tempinput.empty()) {
           tempinput.erase(0, 1);
         }
@@ -217,10 +167,8 @@ void nfa::executeStep(State actualState, string input, string real, stack<string
       } else {
         input_string = ".";
       }
-      //cout << "Move: " << move << endl;
-      //cout << "Temp " << input_string << "real " << tempinput << endl;
       string nextstate_string = allowedTrans[i].getdestination();
-      cout << "Siguiente:  " << nextstate_string << endl;
+      if (trace_) cout << endl << "Next state: " << nextstate_string;
       State nextstate;
       for (auto i : States_) {
         if (i.getnode() == nextstate_string) {
@@ -234,49 +182,19 @@ void nfa::executeStep(State actualState, string input, string real, stack<string
           tempstack.push(nextsymbols[i]);
         }
       }
-      stack<string> checking = tempstack;
-      cout << "En pila: ";
-      while (!checking.empty()) {
-        cout << checking.top() << "\t";
-        checking.pop();
-      }
-      cout << endl;
-      //cout << "aceptado?: " << nextstate.getacept() << endl;
-      //acceptedInput_ = nextstate.getacept();
       executeStep(nextstate, input_string, tempinput, tempstack, move);
     }
     } else {
-      cout << "kuso mitai" << endl;
+      
     }
   } else {
-    cout << "llego final";
+    
   }
 }
 bool nfa::checkEnd(string input, int move) {
   return move > end_ ? 1 : 0;
-  /*char compare = input[move];
-  if (input_.back() == compare) {
-    return true;
-  } else {
-    return false;
-  }*/
 }
-void nfa::test() {
-  //set<State>::iterator i = States_.begin();
-  for (auto iter : States_) {
-    State aux(iter);
-    string temp = aux.getnode();
-    stack<string> stackaux;
-    stackaux.push("S");
-    vector<Transition> tran = getMoves(aux, "0", stackaux);
-    if (!tran.empty()) {
-      for (int i = 0; i < tran.size(); i++) {
-        cout << tran[i].getdestination();
-      }
-    }
-  }
 
-}
 void nfa::show() {
     cout << "Size alfabeto: " << alfabetsize_ << endl;
     cout << "Simbolos del alfabeto: ";
@@ -312,5 +230,126 @@ void nfa::show() {
         cout << endl;
       }
       cout << endl;
+    }
+}
+
+void nfa::Trace(State actualState, string input, string real, stack<string> stepStack, int move) {
+    cout << endl << "Move: " << move << endl;
+    cout << "Current State: " << actualState.getnode() << endl;
+    cout << "Input: " << input << " Chain: " << real << endl;
+    stack<string> checking = stepStack;
+    cout << "En pila: ";
+    while (!checking.empty()) {
+      cout << checking.top() << "\t";
+      checking.pop();
+    }
+}
+
+bool nfa::ValidState(State check) {
+  return States_.find(check) != States_.end();
+}
+
+void nfa::ParseStates(string line) {
+  string nodeaux;
+  vector<string> strings;
+  NumberNodes_ = strings.size();
+  strings = splitString(line);
+  for (int i = 0; i < strings.size(); i++) {
+  State aux;
+  nodeaux = strings[i];
+  aux.setnode(nodeaux);
+  States_.insert(aux);
+  }
+}
+
+void nfa::ParseAlfabeth(string line) {
+  string nodeaux;
+  vector<string> strings;
+  strings = splitString(line);
+  alfabetsize_ = strings.size();
+  for (int i = 0; i < strings.size(); i++) {
+    Alfabet_.insert(strings[i]);
+  }
+}
+
+void nfa::ParseStack(string line) {
+  string nodeaux;
+  vector<string> strings;
+  strings = splitString(line);
+  strings = splitString(line);
+  for (int i = 0; i < strings.size(); i++) {
+    stack_symbols_.insert(strings[i]);
+  }
+}
+
+bool nfa::ValidStack(string check) {
+  return stack_symbols_.find(check) != stack_symbols_.end();
+}
+
+void nfa::ParseAccept(string line) {
+  string nodeaux;
+  vector<string> strings;
+  strings = splitString(line);
+  NumberAcept_ = strings.size();
+  for (int i = 0; i < strings.size(); i++) {
+    nodeaux = strings[i];
+    State aux2;
+    aux2.setnode(nodeaux);
+    assert(ValidState(aux2));
+    auto pos = States_.find(aux2);
+    States_.erase(pos);
+    aux2.setacept(1);
+    States_.insert(aux2);
+   }
+}
+
+void nfa::ParseTrans(string line, ifstream& file) {
+  vector<string> strings; 
+  string nodeaux,destinationnode,originnode;
+  string simbolaux, extractaux;  
+  while (getline(file, line)) {
+    strings = splitString(line);
+    originnode = strings[0];
+    simbolaux = strings[1];
+    extractaux = strings[2];
+    destinationnode = strings[3];
+    Transition aux3;
+    State comparenode;
+    comparenode.setnode(originnode);
+    assert(ValidState(comparenode));
+    aux3.setsimb(simbolaux);
+    State destinationaux;
+    destinationaux.setnode(destinationnode);
+    assert(ValidState(destinationaux));
+    aux3.setdestination(destinationnode);
+    assert(ValidStack(extractaux));
+    aux3.setExtract(extractaux);
+    vector<string> insertaux;
+    for (int i = 4; i < strings.size(); i++) {
+      if (strings[i] != ".") assert(ValidStack(strings[i]));
+      insertaux.push_back(strings[i]);
+    }
+    aux3.setInsert(insertaux);
+    set<State>::iterator it = States_.begin();
+    while (it != States_.end()) {
+      State temp(*it);
+      if (temp.getnode() == comparenode.getnode()) {
+        vector<Transition> walk = temp.gettrans();
+        for (vector<Transition>::iterator t = walk.begin(); t != walk.end(); t++) {
+          Transition tranaux(*t);
+          comparenode.settrans(tranaux);
+        }
+        if (temp.getacept()) {
+          comparenode.setacept(1);
+          comparenode.settrans(aux3);
+        } else {
+          comparenode.settrans(aux3);
+        }
+      }
+      it++;
+      }
+      auto position = States_.find(comparenode);
+      States_.erase(position);
+      States_.insert(comparenode);
     }
 }
