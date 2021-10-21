@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <stack>
 #include <assert.h>
-#include "../headers/State.hpp"
+#include "../headers/State.h"
 
 using namespace std;
 
